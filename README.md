@@ -36,4 +36,21 @@
 | DELETE | /books/:bookId/ | Delete a book |
 
 ## Screenshots
-Screenshots are available in the screenshots folder.
+
+### Get All Books
+![Get All Books](screenshots/get-all-books.png)
+
+### Get One Book
+![Get One Book](screenshots/get-one-book.png)
+
+### Add a Book
+![Add Book](screenshots/post-add-book.png)
+
+### Update a Book
+![Update Book](screenshots/put-update-book.png)
+
+### Delete a Book
+![Delete Book](screenshots/delete-book.png)
+
+### SQLite Verification
+![SQLite Verification](screenshots/sqlite-verification.png)
