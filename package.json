@@ -1,11 +1,11 @@
 {
-  "name": "lab_02_express_js",
+  "name": "lab-03-rest-api",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Lab 03 - REST API, Query Parameters, Validation and Debugging",
+  "main": "app.js",
   "scripts": {
     "start": "node app.js",
-  "dev": "nodemon app.js"
+    "dev": "nodemon app.js"
   },
   "keywords": [],
   "author": "",
