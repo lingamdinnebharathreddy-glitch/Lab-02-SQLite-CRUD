@@ -1,146 +1,145 @@
+
 const express = require("express");
 const sqlite3 = require("sqlite3");
 const { open } = require("sqlite");
+const path = require("path");
 
 const app = express();
 
 app.use(express.json());
 
-const dbPath = "./library.db";
+const dbPath = path.join(__dirname, "library.db");
 
 let db = null;
 
+// Initialize Database and Server
 const initializeDBAndServer = async () => {
-    try {
-        db = await open({
-            filename: dbPath,
-            driver: sqlite3.Database,
-        });
+    db = await open({
+        filename: dbPath,
+        driver: sqlite3.Database
+    });
 
-        app.listen(3000, () => {
-            console.log("Server running at http://localhost:3000");
-        });
-    } catch (error) {
-        console.log(`Database Error: ${error.message}`);
-        process.exit(1);
-    }
+    app.listen(3000, () => {
+        console.log("Server running at http://localhost:3000");
+    });
 };
 
-
+// API 1: Get All Books
 app.get("/books/", async (request, response) => {
     const {
         search_q,
-        order_by = "id",
-        order = "ASC",
-        limit = 10,
-        offset = 0,
+        order_by,
+        order,
+        limit,
+        offset,
         min_price,
         max_price
     } = request.query;
 
-    let query = `SELECT * FROM book WHERE 1 = 1`;
-    const queryParams = [];
+    let query = "SELECT * FROM book";
+    const params = [];
 
     if (search_q !== undefined) {
-        query += ` AND title LIKE ?`;
-        queryParams.push(`%${search_q}%`);
+        query += " WHERE title LIKE ?";
+        params.push("%" + search_q + "%");
     }
 
     if (min_price !== undefined && max_price !== undefined) {
-        query += ` AND price BETWEEN ? AND ?`;
-        queryParams.push(min_price, max_price);
-    } else if (min_price !== undefined) {
-        query += ` AND price >= ?`;
-        queryParams.push(min_price);
-    } else if (max_price !== undefined) {
-        query += ` AND price <= ?`;
-        queryParams.push(max_price);
+        if (search_q !== undefined) {
+            query += " AND price BETWEEN ? AND ?";
+        } else {
+            query += " WHERE price BETWEEN ? AND ?";
+        }
+
+        params.push(min_price, max_price);
     }
 
-    const allowedColumns = ["id", "title", "author", "price", "pages"];
-    const sortColumn = allowedColumns.includes(order_by) ? order_by : "id";
-    const sortOrder = order.toUpperCase() === "DESC" ? "DESC" : "ASC";
+    if (min_price !== undefined && max_price === undefined) {
+        if (search_q !== undefined) {
+            query += " AND price >= ?";
+        } else {
+            query += " WHERE price >= ?";
+        }
 
-    query += ` ORDER BY ${sortColumn} ${sortOrder} LIMIT ? OFFSET ?`;
-    queryParams.push(Number(limit), Number(offset));
+        params.push(min_price);
+    }
 
-    const books = await db.all(query, queryParams);
+    if (max_price !== undefined && min_price === undefined) {
+        if (search_q !== undefined) {
+            query += " AND price <= ?";
+        } else {
+            query += " WHERE price <= ?";
+        }
+
+        params.push(max_price);
+    }
+
+    let sortColumn = "id";
+    let sortOrder = "ASC";
+
+    if (order_by !== undefined) {
+        sortColumn = order_by;
+    }
+
+    if (order !== undefined) {
+        sortOrder = order;
+    }
+
+    query += " ORDER BY " + sortColumn + " " + sortOrder;
+
+    let bookLimit = 10;
+    let bookOffset = 0;
+
+    if (limit !== undefined) {
+        bookLimit = Number(limit);
+    }
+
+    if (offset !== undefined) {
+        bookOffset = Number(offset);
+    }
+
+    query += " LIMIT ? OFFSET ?";
+    params.push(bookLimit, bookOffset);
+
+    const books = await db.all(query, params);
+
     response.send(books);
 });
 
-
+// API 2: Get Book by ID
 app.get("/books/:bookId/", async (request, response) => {
     const { bookId } = request.params;
 
-    const book = await db.get(
-        "SELECT * FROM book WHERE id = ?",
-        [bookId]
-    );
+    const query = "SELECT * FROM book WHERE id = ?";
 
-    if (!book) {
-        return response.status(404).json({
-            message: "Book not found"
-        });
+    const book = await db.get(query, [bookId]);
+
+    if (book === undefined) {
+        response.status(404);
+        response.send("Book not found");
+    } else {
+        response.send(book);
     }
-
-    return response.status(200).json(book);
 });
+
+// API 3: Add a Book
 app.post("/books/", async (request, response) => {
     const { title, author, price, pages } = request.body;
-
-    if (!title || typeof title !== "string" || !title.trim()) {
-        return response.status(400).json({
-            message: "Title is required"
-        });
-    }
-
-    if (!author || typeof author !== "string" || !author.trim()) {
-        return response.status(400).json({
-            message: "Author is required"
-        });
-    }
-
-    if (typeof price !== "number" || !Number.isFinite(price)) {
-        return response.status(400).json({
-            message: "Price must be a valid number"
-        });
-    }
 
     const query = `
         INSERT INTO book (title, author, price, pages)
         VALUES (?, ?, ?, ?);
     `;
 
-    await db.run(query, [title.trim(), author.trim(), price, pages ?? null]);
+    await db.run(query, [title, author, price, pages]);
 
-    return response.status(201).json({
-        message: "Book added successfully"
-    });
+    response.send("Book added successfully");
 });
 
-
+// API 4: Update a Book
 app.put("/books/:bookId/", async (request, response) => {
     const { bookId } = request.params;
     const { title, author, price, pages } = request.body;
-
-    const book = await db.get(
-        "SELECT * FROM book WHERE id = ?",
-        [bookId]
-    );
-
-    if (!book) {
-        return response.status(404).json({
-            message: "Book not found"
-        });
-    }
-
-    if (typeof title !== "string" || !title.trim() ||
-        typeof author !== "string" || !author.trim() ||
-        typeof price !== "number" || !Number.isFinite(price)) {
-        return response.status(400).json({
-            message: "Valid title, author and price are required"
-        });
-    }
 
     const query = `
         UPDATE book
@@ -148,31 +147,22 @@ app.put("/books/:bookId/", async (request, response) => {
         WHERE id = ?;
     `;
 
-    await db.run(query, [
-        title.trim(), author.trim(), price, pages ?? null, bookId
-    ]);
+    await db.run(query, [title, author, price, pages, bookId]);
 
-    return response.status(200).json({
-        message: "Book updated successfully"
-    });
+    response.send("Book updated successfully");
 });
 
+// API 5: Delete a Book
 app.delete("/books/:bookId/", async (request, response) => {
     const { bookId } = request.params;
 
-    const result = await db.run(
-        "DELETE FROM book WHERE id = ?",
-        [bookId]
-    );
+    const query = "DELETE FROM book WHERE id = ?";
 
-    if (result.changes === 0) {
-        return response.status(404).json({
-            message: "Book not found"
-        });
-    }
+    await db.run(query, [bookId]);
 
-    return response.status(200).json({
-        message: "Book deleted successfully"
-    });
+    response.send("Book deleted successfully");
 });
+
 initializeDBAndServer();
+
+module.exports = app;
