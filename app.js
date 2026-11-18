@@ -12,7 +12,7 @@ const dbPath = path.join(__dirname, "library.db");
 
 let db = null;
 
-// Initialize Database and Server
+
 const initializeDBAndServer = async () => {
     db = await open({
         filename: dbPath,
@@ -24,7 +24,7 @@ const initializeDBAndServer = async () => {
     });
 };
 
-// API 1: Get All Books
+
 app.get("/books/", async (request, response) => {
     const {
         search_q,
@@ -106,7 +106,7 @@ app.get("/books/", async (request, response) => {
     response.send(books);
 });
 
-// API 2: Get Book by ID
+
 app.get("/books/:bookId/", async (request, response) => {
     const { bookId } = request.params;
 
@@ -122,7 +122,7 @@ app.get("/books/:bookId/", async (request, response) => {
     }
 });
 
-// API 3: Add a Book
+
 app.post("/books/", async (request, response) => {
     const { title, author, price, pages } = request.body;
 
@@ -136,7 +136,7 @@ app.post("/books/", async (request, response) => {
     response.send("Book added successfully");
 });
 
-// API 4: Update a Book
+
 app.put("/books/:bookId/", async (request, response) => {
     const { bookId } = request.params;
     const { title, author, price, pages } = request.body;
@@ -152,7 +152,6 @@ app.put("/books/:bookId/", async (request, response) => {
     response.send("Book updated successfully");
 });
 
-// API 5: Delete a Book
 app.delete("/books/:bookId/", async (request, response) => {
     const { bookId } = request.params;
 
